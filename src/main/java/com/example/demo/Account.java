@@ -1,21 +1,26 @@
 package com.example.demo;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
 import java.math.BigDecimal;
 
+@Entity
 public class Account {
-
-    private final Long id;
+    @Id
+    private Long accountId;
     private BigDecimal balance;
-    private final String ownerName;
+    private String ownerName;
 
     public Account(Long id, BigDecimal balance, String ownerName){
-        this.id = id;
+        this.accountId = id;
         this.balance=balance;
         this.ownerName = ownerName;
     }
+    protected Account(){}
 
     public Long getId(){
-        return id;
+        return accountId;
     }
     public BigDecimal getBalance(){
         return balance;

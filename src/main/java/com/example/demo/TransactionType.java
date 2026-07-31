@@ -1,6 +1,6 @@
 package com.example.demo;
 
-enum TransactionType{
+public enum TransactionType{
     DEBIT,
     CREDIT
 }
