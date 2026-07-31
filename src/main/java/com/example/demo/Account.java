@@ -25,4 +25,11 @@ public class Account {
     }
 
     public void credit(BigDecimal amount){this.balance=balance.add(amount);}
+    public void debit(BigDecimal amount){
+        if (amount.compareTo(this.balance) > 0) {
+            throw new IllegalStateException("Insufficient funds");
+        }
+        this.balance = this.balance.subtract(amount);
+    }
 }
+
