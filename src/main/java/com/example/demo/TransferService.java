@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class TransferService {
         this.ledgerRepo=ledgerRepo;
     }
 
+    @Transactional
     public void transfer(Long fromId, Long toId, BigDecimal amount){
         Account from = accountRepo.findById(fromId).orElseThrow();  // local
         Account to = accountRepo.findById(toId).orElseThrow();      // local

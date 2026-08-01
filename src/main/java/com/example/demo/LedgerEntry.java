@@ -19,7 +19,6 @@ public class LedgerEntry {
     private String transferId;
 
     public LedgerEntry(Account account,BigDecimal amount,TransactionType type,Instant timestamp,String transferId){
-        this.ledgerId=ledgerId;
         this.account=account;
         this.amount=amount;
         this.type=type;
