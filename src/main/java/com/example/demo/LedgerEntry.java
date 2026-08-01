@@ -1,9 +1,6 @@
 package com.example.demo;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,6 +8,7 @@ import java.time.Instant;
 @Entity
 public class LedgerEntry {
     @Id
+    @GeneratedValue
     private Long ledgerId;
     @ManyToOne
     @JoinColumn(name = "account_Id")
@@ -20,7 +18,7 @@ public class LedgerEntry {
     private Instant timestamp;
     private String transferId;
 
-    public LedgerEntry(Long ledgerId, Account account,BigDecimal amount,TransactionType type,Instant timestamp,String transferId){
+    public LedgerEntry(Account account,BigDecimal amount,TransactionType type,Instant timestamp,String transferId){
         this.ledgerId=ledgerId;
         this.account=account;
         this.amount=amount;
