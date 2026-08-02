@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public class AccountRepo implements Repo<Account>{
+public class AccountRepo implements Repo<Account,Long>{
     @PersistenceContext
     private EntityManager entityManager;
 

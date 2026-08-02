@@ -17,7 +17,7 @@ public class AccountController {
 
     @PostMapping("/transfer")
     public ResponseEntity<String> transferExecution(@RequestBody TransferRequest request){
-        transferService.transfer(request.getFromId(), request.getToId(), request.getAmount());
+        transferService.transfer(request.getFromId(), request.getToId(), request.getAmount(), request.getIdempotencyKey());
         return ResponseEntity.ok("Transfer All Good");
     }
 

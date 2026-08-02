@@ -7,9 +7,9 @@ import java.math.BigDecimal;
 
 @Service
 public class AccountService {
-    private final Repo<Account> accountRepo;
+    private final Repo<Account,Long> accountRepo;
 
-    public AccountService(Repo<Account> accountRepo) {
+    public AccountService(Repo<Account,Long> accountRepo) {
         this.accountRepo = accountRepo;
     }
     @Transactional

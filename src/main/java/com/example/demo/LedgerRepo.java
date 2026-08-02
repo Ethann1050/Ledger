@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public class LedgerRepo implements Repo<LedgerEntry> {
+public class LedgerRepo implements Repo<LedgerEntry,Long> {
     @PersistenceContext
     private EntityManager entityManager;
 

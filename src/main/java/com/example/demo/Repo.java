@@ -6,11 +6,12 @@ import java.util.List;
 import java.util.Optional;
 
 
-public interface Repo<T> {
+public interface Repo<T,Id> {
 
     T save(T t);
-    void delete(Long id);
-    Optional<T> findById(Long id);
+    void delete(Id id);
+    Optional<T> findById(Id id);
+
     List<T> findAll();
 
 }

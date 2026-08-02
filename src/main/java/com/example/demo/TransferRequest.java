@@ -1,11 +1,13 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public class TransferRequest {
     private Long fromId;
     private Long toId;
     private BigDecimal amount;
+    private String idempotencyKey;
 
     public TransferRequest(){};
 
@@ -21,6 +23,8 @@ public class TransferRequest {
         return amount;
     }
 
+    public String getIdempotencyKey(){return idempotencyKey;}
+
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
@@ -31,5 +35,8 @@ public class TransferRequest {
 
     public void setToId(Long toId) {
         this.toId = toId;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey){this.idempotencyKey= idempotencyKey;
     }
 }
