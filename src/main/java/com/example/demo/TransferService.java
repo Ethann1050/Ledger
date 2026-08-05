@@ -23,12 +23,33 @@ public class TransferService {
     @Transactional
     public void transfer(Long fromId, Long toId, BigDecimal amount, String IdempotencyKey){
 
+        Account from;
+        Account to;
+
+        if (fromId.equals(toId)) {
+            throw new IllegalArgumentException("Cannot transfer to the same account");
+        }
+
         if (processedTransferRepo.findById(IdempotencyKey).isPresent()){
             return;
         }
 
-        Account from = accountRepo.findById(fromId).orElseThrow();  // local
-        Account to = accountRepo.findById(toId).orElseThrow();      // local
+        Long firstId = Math.min(fromId, toId);
+        Long secondId = Math.max(fromId, toId);
+
+        Account first = accountRepo.findById(firstId).orElseThrow();  // local
+        Account second = accountRepo.findById(secondId).orElseThrow();      // local
+
+        if  (fromId.equals(firstId)){
+             from =first;
+             to = second;
+        }
+        else {
+             from =second;
+             to = first;
+        }
+
+
         from.debit(amount);
         to.credit(amount);
         accountRepo.save(from);
@@ -36,7 +57,7 @@ public class TransferService {
 
         String transferId = UUID.randomUUID().toString();
 
-        LedgerEntry debitEntry = new LedgerEntry(from, amount, TransactionType.DEBIT, Instant.now(), transferId);
+        LedgerEntry debitEntry = new LedgerEntry(from, amount.negate(), TransactionType.DEBIT, Instant.now(), transferId);
         LedgerEntry creditEntry = new LedgerEntry(to, amount, TransactionType.CREDIT, Instant.now(), transferId);
 
         ProcessedTransfer processedTransfer= new ProcessedTransfer(IdempotencyKey,Instant.now());

@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
@@ -25,6 +26,10 @@ public class AccountRepo implements Repo<Account,Long>{
 
     @Override
     public Optional<Account> findById(Long id) {
+        return Optional.ofNullable(entityManager.find(Account.class, id, LockModeType.PESSIMISTIC_WRITE));
+    }
+
+    public Optional<Account> findByIdCheck(Long id) {
         return Optional.ofNullable(entityManager.find(Account.class, id));
     }
     @Override
