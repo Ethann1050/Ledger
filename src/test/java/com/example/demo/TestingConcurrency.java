@@ -54,7 +54,6 @@ class TransferServiceConcurrencyTest {
 
 
     @Test
-    @Transactional // Ensures the test setup and assertions run within a transaction block
     void testConcurrentTransfersAvoidRaceConditions() throws InterruptedException {
         Account sender = accountRepo.save(new Account(new BigDecimal("1000.00"), "Alice"));
         Account receiver = accountRepo.save(new Account(new BigDecimal("100.00"), "Bob"));
@@ -92,7 +91,6 @@ class TransferServiceConcurrencyTest {
     }
 
     @Test
-    @Transactional
     void testDeadlockPreventionCrossTransfers() throws InterruptedException {
         Account acc1 = accountRepo.save(new Account(new BigDecimal("1000.00"), "Alice"));
         Account acc2 = accountRepo.save(new Account(new BigDecimal("1000.00"), "Bob"));
@@ -153,7 +151,6 @@ class TransferServiceConcurrencyTest {
     }
 
     @Test
-    @Transactional
     void testTransferFailsOnInsufficientFunds() {
         Account sender = accountRepo.save(new Account(new BigDecimal("10.00"), "Broke Person"));
         Account receiver = accountRepo.save(new Account(new BigDecimal("100.00"), "Rich Person"));
