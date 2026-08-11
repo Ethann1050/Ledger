@@ -3,16 +3,12 @@ package com.example.demo;
 import java.math.BigDecimal;
 
 public class CreateAccountRequest {
-
-    private Long accountId;
     private BigDecimal balance;
     private String ownerName;
+    private String idempotencyKey;
 
     public CreateAccountRequest(){};
 
-    public Long getId(){
-        return accountId;
-    }
     public BigDecimal getBalance(){
         return balance;
     }
@@ -20,9 +16,8 @@ public class CreateAccountRequest {
         return ownerName;
     }
 
-    public void setAccountId(Long accountId) {
-        this.accountId = accountId;
-    }
+    public String getIdempotencyKey() {return idempotencyKey;}
+
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }

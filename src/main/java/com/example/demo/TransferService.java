@@ -4,51 +4,57 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class TransferService {
 
-    private final Repo<Account,Long> accountRepo;
-    private final Repo<LedgerEntry,Long> ledgerRepo;
-    private final Repo<ProcessedTransfer,String> processedTransferRepo;
+    private final Repo<Account, Long> accountRepo;
+    private final LedgerRepo ledgerRepo;
+    private final ProcessedTransferRepo processedTransferRepo;
 
-    public TransferService (Repo<Account,Long> accountRepo, Repo<LedgerEntry,Long> ledgerRepo, Repo<ProcessedTransfer,String> processedTransferRepo){
-        this.accountRepo=accountRepo;
-        this.ledgerRepo=ledgerRepo;
+    public TransferService(Repo<Account, Long> accountRepo, LedgerRepo ledgerRepo, ProcessedTransferRepo processedTransferRepo) {
+        this.accountRepo = accountRepo;
+        this.ledgerRepo = ledgerRepo;
         this.processedTransferRepo = processedTransferRepo;
     }
 
     @Transactional
-    public void transfer(Long fromId, Long toId, BigDecimal amount, String IdempotencyKey){
+    public void transfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey) {
 
-        Account from;
-        Account to;
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key must not be null or blank");
+        }
 
         if (fromId.equals(toId)) {
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
 
-        if (processedTransferRepo.findById(IdempotencyKey).isPresent()){
+        // Claim the idempotency key on the SAME connection/transaction as everything below.
+        // If it's already claimed, bail out — no second transaction, no separate commit.
+        if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
             return;
         }
+
+        Account from;
+        Account to;
 
         Long firstId = Math.min(fromId, toId);
         Long secondId = Math.max(fromId, toId);
 
-        Account first = accountRepo.findById(firstId).orElseThrow();  // local
-        Account second = accountRepo.findById(secondId).orElseThrow();      // local
+        Account first = accountRepo.findById(firstId).orElseThrow();
+        Account second = accountRepo.findById(secondId).orElseThrow();
 
-        if  (fromId.equals(firstId)){
-             from =first;
-             to = second;
+        if (fromId.equals(firstId)) {
+            from = first;
+            to = second;
+        } else {
+            from = second;
+            to = first;
         }
-        else {
-             from =second;
-             to = first;
-        }
-
 
         from.debit(amount);
         to.credit(amount);
@@ -57,15 +63,114 @@ public class TransferService {
 
         String transferId = UUID.randomUUID().toString();
 
-        LedgerEntry debitEntry = new LedgerEntry(from, amount.negate(), TransactionType.DEBIT, Instant.now(), transferId);
-        LedgerEntry creditEntry = new LedgerEntry(to, amount, TransactionType.CREDIT, Instant.now(), transferId);
+        LedgerEntry debitEntry = new LedgerEntry(from, amount.negate(), TransactionType.DEBIT, Instant.now(), transferId,null);
+        LedgerEntry creditEntry = new LedgerEntry(to, amount, TransactionType.CREDIT, Instant.now(), transferId,null);
 
-        ProcessedTransfer processedTransfer= new ProcessedTransfer(IdempotencyKey,Instant.now());
+//        ProcessedTransfer Entry = new ProcessedTransfer(idempotencyKey, Instant.now());
+//
+//
+//
+//        processedTransferRepo.save(Entry);
+        ledgerRepo.save(debitEntry);
+        ledgerRepo.save(creditEntry);
+    }
+
+    @Transactional
+    public String holdTransfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey, Duration holdDuration) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key must not be null or blank");
+        }
+        if (fromId.equals(toId)) {
+            throw new IllegalArgumentException("Cannot transfer to the same account");
+        }
+
+        if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
+            // Returns existing transfer ID or reference if re-submitted
+            return idempotencyKey;
+        }
+
+        Long firstId = Math.min(fromId, toId);
+        Long secondId = Math.max(fromId, toId);
+
+        Account first = accountRepo.findById(firstId).orElseThrow();
+        Account second = accountRepo.findById(secondId).orElseThrow();
+
+        Account from;
+        Account to;
+
+
+
+        if (fromId.equals(firstId)) {
+            from = first;
+            to = second;
+        } else {
+            from = second;
+            to = first;
+        }
+
+        // Reserves funds on sender account (availableBalance drops immediately)
+        from.addPendingDebit(amount);
+        accountRepo.save(from);
+
+        String transferId = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+
+        // Write HOLD_RESERVE to ledger
+        LedgerEntry reserveEntry = new LedgerEntry(from, amount.negate(), TransactionType.HOLD_RESERVE, now, transferId, now.plus(holdDuration));
+        ledgerRepo.save(reserveEntry);
+
+        return transferId;
+    }
+
+    @Transactional
+    public void commitHold(Long toId, String transferId,String idempotencyKey) {
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
+                return; // Idempotency key already claimed
+            }
+        }
+        List<LedgerEntry> entries=ledgerRepo.findByTransferIdAndType(transferId, TransactionType.HOLD_RESERVE);
+
+        if (entries.isEmpty()) {
+            throw new IllegalArgumentException("Original hold reserve not found for transferId: " + transferId);
+        }
+
+        Long fromId=entries.get(0).getAccountId();
+        BigDecimal amount=entries.get(0).getAmount().abs();
+
+
+        Long firstId = Math.min(fromId, toId);
+        Long secondId = Math.max(fromId, toId);
+
+        Account first = accountRepo.findById(firstId).orElseThrow();
+        Account second = accountRepo.findById(secondId).orElseThrow();
+
+        Account from = fromId.equals(firstId) ? first : second;
+        Account to = fromId.equals(firstId) ? second : first;
+
+        from.commitPendingDebit(amount);
+        to.credit(amount);
+
+        accountRepo.save(from);
+        accountRepo.save(to);
+
+        Instant now = Instant.now();
+        LedgerEntry debitEntry = new LedgerEntry(from, amount.negate(), TransactionType.HOLD_COMMIT, now, transferId,null);
+        LedgerEntry creditEntry = new LedgerEntry(to, amount, TransactionType.HOLD_COMMIT, now, transferId,null);
 
         ledgerRepo.save(debitEntry);
         ledgerRepo.save(creditEntry);
+    }
 
-        processedTransferRepo.save(processedTransfer);
+    @Transactional
+    public void voidHold(Long fromId, BigDecimal amount, String transferId) {
+        Account from = accountRepo.findById(fromId).orElseThrow();
 
+        from.voidPendingDebit(amount);
+        accountRepo.save(from);
+
+        LedgerEntry voidEntry = new LedgerEntry(from, amount, TransactionType.HOLD_VOID, Instant.now(), transferId,null);
+        ledgerRepo.save(voidEntry);
     }
 }
+

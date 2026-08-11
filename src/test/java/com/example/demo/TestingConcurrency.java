@@ -33,6 +33,8 @@ class TestDataCleaner {
 
 @SpringBootTest
 class TransferServiceConcurrencyTest {
+
+
     @Autowired
     private TestDataCleaner testDataCleaner;
 

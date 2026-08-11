@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,17 +15,24 @@ public class AccountRepo implements Repo<Account,Long>{
     private EntityManager entityManager;
 
     @Override
+    @Transactional
     public Account save(Account account){
         if (account.getId()==null){
             entityManager.persist(account); //auto generates ID if it doesn't have one
-        return account;
+            return account;
         }
         else{
             return entityManager.merge(account);
         }
     }
 
+
+    public void deleteAll() {
+        entityManager.createQuery("DELETE FROM Account").executeUpdate();
+    }
+
     @Override
+    @Transactional
     public Optional<Account> findById(Long id) {
         return Optional.ofNullable(entityManager.find(Account.class, id, LockModeType.PESSIMISTIC_WRITE));
     }
