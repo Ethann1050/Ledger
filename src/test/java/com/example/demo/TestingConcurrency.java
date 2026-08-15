@@ -31,8 +31,7 @@ class TestDataCleaner {
     }
 }
 
-@SpringBootTest
-class TransferServiceConcurrencyTest {
+class TransferServiceConcurrencyTest extends AbstractBaseIntegrationTest {
 
 
     @Autowired
