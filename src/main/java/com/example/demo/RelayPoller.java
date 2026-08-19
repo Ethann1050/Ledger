@@ -13,14 +13,17 @@ import java.util.List;
 @Component
 public class RelayPoller {
 
-    @PersistenceContext
-    EntityManager entityManager;
+    private final OutboxRepo outboxRepo;
+
+    public RelayPoller(OutboxRepo outboxRepo) {
+        this.outboxRepo = outboxRepo;
+    }
+
 
     @Scheduled(fixedDelay=10000)
     @Transactional
     public void checkForPending(){
-        String sql="SELECT e FROM Outbox e WHERE e.status='PENDING'";
-        List<Outbox> pendingOutboxes=entityManager.createQuery(sql).setMaxResults(10).setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultList();
+        List<Outbox> pendingOutboxes=outboxRepo.findPendingBatch(10);
         if (!pendingOutboxes.isEmpty()){
             for (Outbox outbox : pendingOutboxes){
                 sendToKafka(outbox);
@@ -38,7 +41,7 @@ public class RelayPoller {
 
     private void updateOutboxStatus(Outbox outbox, OutboxStatus status){
         outbox.setStatus(status);
-        entityManager.merge(outbox);
+        outboxRepo.save(outbox);
 
     }
 

@@ -48,7 +48,7 @@ public class OutboxRepo implements Repo<Outbox, Long>{
     }
 
     public List<Outbox> findPendingBatch(int batchsize){
-        String sql="SELECT e FROM Outbox e WHERE e.status= 'PENDING' ORDER BY e.createdAt ASC ";
+        String sql="SELECT e FROM Outbox e WHERE e.status= OutboxStatus.PENDING ORDER BY e.createdAt ASC ";
         return entityManager.createNativeQuery(sql, Outbox.class).setMaxResults(batchsize).setLockMode(PESSIMISTIC_WRITE).getResultList();
     }
 
