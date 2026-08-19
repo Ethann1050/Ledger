@@ -14,6 +14,8 @@ public class Outbox {
 
     private String actionType;
 
+    private String payload;
+
     private String actionId;
 
     private String eventType;
@@ -28,12 +30,14 @@ public class Outbox {
         this.actionType = actionType;
         this.actionId = actionId;
         this.eventType = eventType;
+        this.payload=payload;
         this.status = OutboxStatus.PENDING;
         this.createdAt = Instant.now();
     }
 
     // Getters and Setters
     public Long getId() { return id; }
+    public String getPayload() {return payload;}
     public String getactionType() { return actionType; }
     public String getactionId() { return actionId; }
     public String getEventType() { return eventType; }
