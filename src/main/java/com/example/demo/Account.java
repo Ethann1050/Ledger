@@ -3,16 +3,18 @@ package com.example.demo;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import org.hibernate.annotations.Check;
 
 import java.math.BigDecimal;
 
 @Entity
+@Check(constraints="balance>=0")
 public class Account {
     @Id
     @GeneratedValue
     private Long accountId;
     private BigDecimal balance;
-    private BigDecimal pendingDebits=BigDecimal.ZERO;;
+    private BigDecimal pendingDebits=BigDecimal.ZERO;
     private String ownerName;
 
 

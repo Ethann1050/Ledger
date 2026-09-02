@@ -1,15 +1,12 @@
 package com.example.demo;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-
-import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
 
 @Repository
 public class OutboxRepo implements Repo<Outbox, Long>{
@@ -48,8 +45,17 @@ public class OutboxRepo implements Repo<Outbox, Long>{
     }
 
     public List<Outbox> findPendingBatch(int batchsize){
-        String sql="SELECT e FROM Outbox e WHERE e.status= OutboxStatus.PENDING ORDER BY e.createdAt ASC ";
-        return entityManager.createNativeQuery(sql, Outbox.class).setMaxResults(batchsize).setLockMode(PESSIMISTIC_WRITE).getResultList();
+        String sql = """
+        SELECT * FROM outbox
+        WHERE status = 'PENDING'
+        ORDER BY created_at ASC
+        LIMIT :batchSize
+        FOR UPDATE SKIP LOCKED
+        """;
+
+        return entityManager.createNativeQuery(sql, Outbox.class)
+                .setParameter("batchSize", batchsize)
+                .getResultList();
     }
 
 }
