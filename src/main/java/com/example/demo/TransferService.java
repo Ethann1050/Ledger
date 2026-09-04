@@ -15,15 +15,17 @@ public class TransferService {
     private final Repo<Account, Long> accountRepo;
     private final LedgerRepo ledgerRepo;
     private final ProcessedTransferRepo processedTransferRepo;
+    private final OutboxRepo outboxRepo;
 
-    public TransferService(Repo<Account, Long> accountRepo, LedgerRepo ledgerRepo, ProcessedTransferRepo processedTransferRepo) {
+    public TransferService(Repo<Account, Long> accountRepo, LedgerRepo ledgerRepo, ProcessedTransferRepo processedTransferRepo, OutboxRepo outboxRepo) {
         this.accountRepo = accountRepo;
         this.ledgerRepo = ledgerRepo;
         this.processedTransferRepo = processedTransferRepo;
+        this.outboxRepo=outboxRepo;
     }
 
     @Transactional
-    public void transfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey) {
+    public int transfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey) {
 
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key must not be null or blank");
@@ -33,10 +35,9 @@ public class TransferService {
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
 
-        // Claim the idempotency key on the SAME connection/transaction as everything below.
-        // If it's already claimed, bail out — no second transaction, no separate commit.
+
         if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
-            return;
+            return 1;
         }
 
         Account from;
@@ -66,13 +67,19 @@ public class TransferService {
         LedgerEntry debitEntry = new LedgerEntry(from, amount.negate(), TransactionType.DEBIT, Instant.now(), transferId,null);
         LedgerEntry creditEntry = new LedgerEntry(to, amount, TransactionType.CREDIT, Instant.now(), transferId,null);
 
-//        ProcessedTransfer Entry = new ProcessedTransfer(idempotencyKey, Instant.now());
-//
-//
-//
-//        processedTransferRepo.save(Entry);
         ledgerRepo.save(debitEntry);
         ledgerRepo.save(creditEntry);
+
+        // Save Outbox Event
+        String payload = String.format(
+                "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s}",
+                transferId, fromId, toId, amount
+        );
+        Outbox outbox = new Outbox("TRANSFER", fromId.toString(), "TRANSFER_COMPLETED", payload);
+        outboxRepo.save(outbox);
+
+        return 0;
+
     }
 
     @Transactional
@@ -119,6 +126,14 @@ public class TransferService {
         LedgerEntry reserveEntry = new LedgerEntry(from, amount.negate(), TransactionType.HOLD_RESERVE, now, transferId, now.plus(holdDuration));
         ledgerRepo.save(reserveEntry);
 
+        // Save Outbox Event
+        String payload = String.format(
+                "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s,\"expiresAt\":\"%s\"}",
+                transferId, fromId, toId, amount, now.plus(holdDuration)
+        );
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_RESERVED", payload);
+        outboxRepo.save(outbox);
+
         return transferId;
     }
 
@@ -160,6 +175,14 @@ public class TransferService {
 
         ledgerRepo.save(debitEntry);
         ledgerRepo.save(creditEntry);
+
+        // Save Outbox Event
+        String payload = String.format(
+                "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s}",
+                transferId, fromId, toId, amount
+        );
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_COMMITTED", payload);
+        outboxRepo.save(outbox);
     }
 
     @Transactional
@@ -171,6 +194,13 @@ public class TransferService {
 
         LedgerEntry voidEntry = new LedgerEntry(from, amount, TransactionType.HOLD_VOID, Instant.now(), transferId,null);
         ledgerRepo.save(voidEntry);
+
+        String payload = String.format(
+                "{\"transferId\":\"%s\",\"fromId\":%d,\"amount\":%s}",
+                transferId, fromId, amount
+        );
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_VOIDED", payload);
+        outboxRepo.save(outbox);
     }
 }
 

@@ -18,7 +18,9 @@ public class AccountController {
 
     @PostMapping("/transfer")
     public ResponseEntity<String> transferExecution(@RequestBody TransferRequest request){
-        transferService.transfer(request.getFromId(), request.getToId(), request.getAmount(), request.getIdempotencyKey());
+        if (transferService.transfer(request.getFromId(), request.getToId(), request.getAmount(), request.getIdempotencyKey())==1){
+            return ResponseEntity.ok ("Transfer already done, duplicate idempotency key");
+        }
         return ResponseEntity.ok("Transfer All Good");
     }
 

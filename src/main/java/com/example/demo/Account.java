@@ -37,7 +37,7 @@ public class Account {
 
     public BigDecimal getAvailableBalance(){return this.getBalance().subtract(this.getPendingDebts());}
 
-    public void credit(BigDecimal amount){this.balance=balance.add(amount);}
+    public void credit(BigDecimal amount){this.balance=this.balance.add(amount);}
     public void debit(BigDecimal amount){
         if (amount.compareTo(this.balance) > 0) {
             throw new IllegalStateException("Insufficient funds");

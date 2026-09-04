@@ -37,6 +37,9 @@ public class AccountRepo implements Repo<Account,Long>{
         return Optional.ofNullable(entityManager.find(Account.class, id, LockModeType.PESSIMISTIC_WRITE));
     }
 
+//    public Optional<Account> findByIdempotencyKey(String idempotencyKey) {
+//
+//    }
     public Optional<Account> findByIdCheck(Long id) {
         return Optional.ofNullable(entityManager.find(Account.class, id));
     }

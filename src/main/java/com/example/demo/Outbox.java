@@ -1,8 +1,6 @@
 package com.example.demo;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.time.Instant;
 
@@ -14,17 +12,21 @@ public class Outbox {
 
     private String actionType;
 
+    @Column(columnDefinition = "TEXT")
     private String payload;
 
     private String actionId;
 
     private String eventType;
 
+    @Enumerated(EnumType.STRING)
     private OutboxStatus status;
 
     private Instant createdAt;
 
     private Instant processedAt;
+
+    protected Outbox() {}
 
     public Outbox(String actionType, String actionId, String eventType, String payload) {
         this.actionType = actionType;
