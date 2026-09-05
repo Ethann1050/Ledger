@@ -2,6 +2,7 @@ package com.example.demo;
 
 
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -14,10 +15,12 @@ import java.util.concurrent.ExecutionException;
 public class RelayPoller {
 
     private final OutboxRepo outboxRepo;
+    private final RabbitTemplate rabbitTemplate;
 
 
-    public RelayPoller(OutboxRepo outboxRepo) {
+    public RelayPoller(OutboxRepo outboxRepo, RabbitTemplate rabbitTemplate) {
         this.outboxRepo = outboxRepo;
+        this.rabbitTemplate=rabbitTemplate;
 
     }
 
@@ -32,7 +35,7 @@ public class RelayPoller {
                     sendToRabbitMQ(outbox);
                     updateOutboxStatus(outbox,OutboxStatus.SENT);
                 } catch (Exception e){
-                    System.out.println("Failed to send outbox entry ID {} to Kafka");
+                    System.out.println("Failed to send outbox entry ID to RabbitMQ");
                     updateOutboxStatus(outbox, OutboxStatus.FAILED);
                 }
 
@@ -43,9 +46,9 @@ public class RelayPoller {
     }
 
     private void sendToRabbitMQ(Outbox outbox) throws ExecutionException, InterruptedException {
-        return;
+        rabbitTemplate.convertSendAndReceive("notifications.exchange","send.device",outbox);
     }
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+//    @Transactional(propagation = Propagation.REQUIRES_NEW)
     private void updateOutboxStatus(Outbox outbox ,OutboxStatus status){
         outbox.setStatus(status);
         outboxRepo.save(outbox);
