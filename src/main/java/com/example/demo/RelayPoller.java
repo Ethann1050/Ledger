@@ -2,6 +2,7 @@ package com.example.demo;
 
 
 
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -33,10 +34,8 @@ public class RelayPoller {
             for (Outbox outbox : pendingOutboxes){
                 try {
                     sendToRabbitMQ(outbox);
-                    updateOutboxStatus(outbox,OutboxStatus.SENT);
                 } catch (Exception e){
-                    System.out.println("Failed to send outbox entry ID to RabbitMQ");
-                    updateOutboxStatus(outbox, OutboxStatus.FAILED);
+                    System.out.println(""+e);
                 }
 
 
@@ -46,10 +45,24 @@ public class RelayPoller {
     }
 
     private void sendToRabbitMQ(Outbox outbox) throws ExecutionException, InterruptedException {
-        rabbitTemplate.convertSendAndReceive("notifications.exchange","send.device",outbox);
+        CorrelationData data = new CorrelationData(String.valueOf(outbox.getId()));
+
+        data.getFuture().whenComplete((confirm,ex)-> {
+            if (ex!=null || !confirm.isAck()){
+                System.err.println("RabbitMQ Failed for this Outbox ID: " + outbox.getId());
+                updateOutboxStatus(outbox, OutboxStatus.FAILED);
+            }
+            else {
+                System.err.println("RabbitMQ Suceeded for this Outbox ID: " + outbox.getId());
+                updateOutboxStatus(outbox, OutboxStatus.SENT);
+            }
+        });
+
+
+        rabbitTemplate.convertAndSend("notifications.exchange","send.device",outbox, data);
     }
-//    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void updateOutboxStatus(Outbox outbox ,OutboxStatus status){
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+        public void updateOutboxStatus(Outbox outbox ,OutboxStatus status){
         outbox.setStatus(status);
         outboxRepo.save(outbox);
 
