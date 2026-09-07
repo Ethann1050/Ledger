@@ -27,6 +27,10 @@ public class TransferService {
     @Transactional
     public int transfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey) {
 
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key must not be null or blank");
         }
@@ -75,7 +79,7 @@ public class TransferService {
                 "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s}",
                 transferId, fromId, toId, amount
         );
-        Outbox outbox = new Outbox("TRANSFER", fromId.toString(), "TRANSFER_COMPLETED", payload);
+        Outbox outbox = new Outbox("TRANSFER", fromId.toString(), "TRANSFER_COMPLETED", payload,0);
         outboxRepo.save(outbox);
 
         return 0;
@@ -84,6 +88,11 @@ public class TransferService {
 
     @Transactional
     public String holdTransfer(Long fromId, Long toId, BigDecimal amount, String idempotencyKey, Duration holdDuration) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
+
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key must not be null or blank");
         }
@@ -131,7 +140,7 @@ public class TransferService {
                 "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s,\"expiresAt\":\"%s\"}",
                 transferId, fromId, toId, amount, now.plus(holdDuration)
         );
-        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_RESERVED", payload);
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_RESERVED", payload,0);
         outboxRepo.save(outbox);
 
         return transferId;
@@ -181,7 +190,7 @@ public class TransferService {
                 "{\"transferId\":\"%s\",\"fromId\":%d,\"toId\":%d,\"amount\":%s}",
                 transferId, fromId, toId, amount
         );
-        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_COMMITTED", payload);
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_COMMITTED", payload,0);
         outboxRepo.save(outbox);
     }
 
@@ -199,7 +208,7 @@ public class TransferService {
                 "{\"transferId\":\"%s\",\"fromId\":%d,\"amount\":%s}",
                 transferId, fromId, amount
         );
-        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_VOIDED", payload);
+        Outbox outbox = new Outbox("HOLD", fromId.toString(), "HOLD_VOIDED", payload,0);
         outboxRepo.save(outbox);
     }
 }

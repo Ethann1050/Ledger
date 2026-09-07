@@ -50,7 +50,13 @@ public class RelayPoller {
         data.getFuture().whenComplete((confirm,ex)-> {
             if (ex!=null || !confirm.isAck()){
                 System.err.println("RabbitMQ Failed for this Outbox ID: " + outbox.getId());
-                updateOutboxStatus(outbox, OutboxStatus.FAILED);
+                if (outbox.getRetries()<3){
+                    outbox.increaseRetry();
+                    updateOutboxStatus(outbox, OutboxStatus.PENDING);
+                }
+                else{
+                    updateOutboxStatus(outbox, OutboxStatus.FAILED);
+                }
             }
             else {
                 System.err.println("RabbitMQ Suceeded for this Outbox ID: " + outbox.getId());
