@@ -6,7 +6,7 @@ import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application.properties")
-class DemoApplicationTests {
+class DemoApplicationTests extends AbstractBaseIntegrationTest {
 	@Test
 	void contextLoads() {
 	}
