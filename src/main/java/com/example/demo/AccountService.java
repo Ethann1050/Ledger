@@ -16,16 +16,16 @@ public class AccountService {
         this.processedTransferRepo=processedTransferRepo;
     }
     @Transactional
-    public Account createAccount(BigDecimal balance, String ownerName, String idempotencyKey) {
+    public int createAccount(BigDecimal balance, String ownerName, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key must not be null or blank");
         }
 
-//        if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
-//            return accountRepo.findByIdempotencyKey(idempotencyKey)
-//                .orElseThrow(() -> new IllegalStateException("Duplicate request in progress or failed"));
-//    }
+        if (!processedTransferRepo.tryClaim(idempotencyKey, Instant.now())) {
+            return 1;
+    }
         Account account = new Account(balance, ownerName);
-        return accountRepo.save(account);
+        accountRepo.save(account);
+        return 0;
     }
 }

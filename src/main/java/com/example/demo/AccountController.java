@@ -24,9 +24,13 @@ public class AccountController {
     }
 
     @PostMapping("/accounts")
-    public ResponseEntity<Account> createAccount(@RequestBody CreateAccountRequest request) {
-        Account account = accountService.createAccount(request.getBalance(), request.getOwner(), request.getIdempotencyKey());
-        return ResponseEntity.ok(account);
+    public ResponseEntity<String> createAccount(@RequestBody CreateAccountRequest request) {
+        int response = accountService.createAccount(request.getBalance(), request.getOwner(), request.getIdempotencyKey());
+        if (response==1){
+            return ResponseEntity.ok("Account creation already happened");
+        }
+        else {
+            return ResponseEntity.ok("Account has been created for"+ request.getOwner());}
     }
 
     @PostMapping("/holdtransfer")
