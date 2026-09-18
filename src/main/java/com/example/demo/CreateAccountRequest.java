@@ -24,4 +24,5 @@ public class CreateAccountRequest {
     public void setOwnerName(String ownerName) {
         this.ownerName = ownerName;
     }
+    public void setIdempotencyKey(String idempotencyKey) {this.idempotencyKey=idempotencyKey;}
 }
